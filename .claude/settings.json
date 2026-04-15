@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "additionalDirectories": [
+      "c:\\Users\\vusal.ir\\Desktop\\rezervasiyam\\backend\\app"
+    ],
+    "allow": [
+      "Bash(curl -s http://localhost:8000/api/health)"
+    ]
+  }
+}
