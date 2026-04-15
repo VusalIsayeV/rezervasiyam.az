@@ -51,7 +51,10 @@ def create_business(payload: BusinessCreate, db: Session = Depends(get_db), user
         services=[s.model_dump() for s in payload.services],
         images=payload.images,
         status="pending",
-        working_hours=[],
+        working_hours=[
+            {"day": d, "is_open": d < 6, "start": "09:00", "end": "18:00", "breaks": []}
+            for d in range(7)
+        ],
         closed_days=[],
     )
     db.add(b)

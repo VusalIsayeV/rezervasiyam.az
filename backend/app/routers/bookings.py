@@ -54,6 +54,10 @@ def availability(business_id: int, service_name: str, date: str, db: Session = D
     end = _parse_hm(hours["end"])
     duration = int(svc["duration_min"])
 
+    now = datetime.now()
+    if dt.date() == now.date():
+        start = max(start, now.hour * 60 + now.minute)
+
     taken: list[tuple[int, int]] = []
     for br in hours.get("breaks", []):
         taken.append((_parse_hm(br["start"]), _parse_hm(br["end"])))
