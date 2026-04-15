@@ -84,6 +84,35 @@ def get_by_slug(slug: str, db: Session = Depends(get_db)):
     return business_to_dict(b)
 
 
+@router.get("/businesses/all")
+def all_businesses_admin(db: Session = Depends(get_db), _: User = Depends(require_mentor)):
+    return [business_to_dict(b) for b in db.query(Business).order_by(Business.id.desc()).all()]
+
+
+@router.post("/businesses/{bid}/status")
+def set_status(bid: int, payload: dict, db: Session = Depends(get_db), _: User = Depends(require_mentor)):
+    b = db.get(Business, bid)
+    if not b:
+        raise HTTPException(404, "Tapılmadı")
+    status = payload.get("status")
+    if status not in ("pending", "approved", "rejected", "disabled"):
+        raise HTTPException(400, "Yanlış status")
+    b.status = status
+    db.commit()
+    db.refresh(b)
+    return business_to_dict(b)
+
+
+@router.delete("/businesses/{bid}")
+def delete_business(bid: int, db: Session = Depends(get_db), _: User = Depends(require_mentor)):
+    b = db.get(Business, bid)
+    if not b:
+        raise HTTPException(404, "Tapılmadı")
+    db.delete(b)
+    db.commit()
+    return {"ok": True}
+
+
 @router.post("/businesses/{bid}/approve")
 def approve_business(bid: int, payload: ApproveIn, db: Session = Depends(get_db), _: User = Depends(require_mentor)):
     b = db.get(Business, bid)
