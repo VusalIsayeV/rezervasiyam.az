@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import { Link, Route, Routes, useNavigate } from "react-router-dom";
 import { clearAuth, getUser } from "./lib/api";
+import { applyTheme, getTheme, Theme } from "./lib/theme";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -11,6 +13,19 @@ import BusinessPublic from "./pages/BusinessPublic";
 export default function App() {
   const user = getUser();
   const nav = useNavigate();
+  const [theme, setTheme] = useState<Theme>("light");
+
+  useEffect(() => {
+    const t = getTheme();
+    setTheme(t);
+    applyTheme(t);
+  }, []);
+
+  const toggleTheme = () => {
+    const next: Theme = theme === "light" ? "dark" : "light";
+    setTheme(next);
+    applyTheme(next);
+  };
 
   const logout = () => {
     clearAuth();
@@ -20,23 +35,43 @@ export default function App() {
 
   return (
     <div className="min-h-screen w-full overflow-x-hidden">
-      <nav className="sticky top-0 z-40 backdrop-blur-xl bg-white/70 border-b border-slate-200/60">
+      <nav
+        className="sticky top-0 z-40 backdrop-blur-xl"
+        style={{
+          background: "color-mix(in srgb, var(--bg) 75%, transparent)",
+          borderBottom: "1px solid var(--border)",
+        }}
+      >
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center gap-2">
-          <Link to="/" className="flex items-center gap-2 group min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg shadow-indigo-200 group-hover:scale-105 transition flex-shrink-0">
+          <Link to="/" className="flex items-center gap-2.5 group min-w-0">
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-base group-hover:scale-105 transition flex-shrink-0"
+              style={{ background: "var(--text)", color: "var(--bg)" }}
+            >
               R
             </div>
-            <span className="text-base sm:text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent truncate">
-              rezervasiyam.az
+            <span className="text-base sm:text-lg font-bold font-display truncate">
+              rezervasiyam<span style={{ color: "var(--text-muted)" }}>.az</span>
             </span>
           </Link>
-          <div className="flex gap-1 sm:gap-2 items-center flex-shrink-0">
+          <div className="flex gap-1.5 sm:gap-2 items-center flex-shrink-0">
+            <button
+              onClick={toggleTheme}
+              aria-label="Toggle theme"
+              className="w-9 h-9 rounded-xl flex items-center justify-center transition hover:scale-105"
+              style={{
+                background: "var(--bg-elev)",
+                border: "1px solid var(--border)",
+              }}
+            >
+              {theme === "light" ? "🌙" : "☀️"}
+            </button>
             {!user && (
               <>
-                <Link to="/login" className="btn-secondary">
+                <Link to="/login" className="btn-secondary !px-3 sm:!px-5 !py-2">
                   Giriş
                 </Link>
-                <Link to="/register" className="btn-primary">
+                <Link to="/register" className="btn-primary !px-3 sm:!px-5 !py-2">
                   Qeydiyyat
                 </Link>
               </>
@@ -48,11 +83,15 @@ export default function App() {
             )}
             {user?.role === "mentor" && (
               <Link to="/mentor" className="btn-secondary">
-                Mentor Panel
+                Mentor
               </Link>
             )}
             {user && (
-              <button onClick={logout} className="text-slate-500 hover:text-red-600 text-sm px-3 py-2 transition">
+              <button
+                onClick={logout}
+                className="text-sm px-3 py-2 transition hover:opacity-80"
+                style={{ color: "var(--text-muted)" }}
+              >
                 Çıxış
               </button>
             )}
