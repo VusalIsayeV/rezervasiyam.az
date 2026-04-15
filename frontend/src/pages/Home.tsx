@@ -58,16 +58,18 @@ export default function Home() {
                 to={`/b/${b.slug}`}
                 className="card p-5 hover:-translate-y-1 transition-all duration-300 group"
               >
-                {b.images?.[0] ? (
-                  <img
-                    src={b.images[0]}
-                    className="w-full h-40 object-cover rounded-xl mb-4"
-                  />
-                ) : (
-                  <div className="w-full h-40 rounded-xl mb-4 bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center text-5xl">
-                    🏪
-                  </div>
-                )}
+                <div className="w-full aspect-[16/10] rounded-xl mb-4 overflow-hidden bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
+                  {b.images?.[0] ? (
+                    <img
+                      src={b.images[0]}
+                      alt={b.name}
+                      loading="lazy"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-5xl">🏪</span>
+                  )}
+                </div>
                 <div className="font-bold text-lg group-hover:text-indigo-600 transition">
                   {b.name}
                 </div>
