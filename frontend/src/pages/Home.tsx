@@ -10,12 +10,12 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6">
+    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 overflow-x-hidden">
       <div className="text-center py-12 sm:py-20">
         <div className="inline-block px-4 py-1.5 rounded-full bg-indigo-50 text-indigo-700 text-xs sm:text-sm font-medium mb-6">
           ✨ Yeni nəsil rezervasiya platforması
         </div>
-        <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold mb-6 leading-tight">
+        <h1 className="text-2xl sm:text-5xl md:text-6xl font-extrabold mb-6 leading-tight break-words">
           Bir kliklə{" "}
           <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
             rezervasiya
@@ -76,9 +76,9 @@ export default function Home() {
                 <div className="text-xs text-indigo-600 font-medium uppercase tracking-wide mt-1">
                   {b.category_slug}
                 </div>
-                <div className="text-sm text-slate-500 mt-2 flex items-center gap-1">
-                  <span>📍</span>
-                  <span className="truncate">{b.location?.address}</span>
+                <div className="text-sm text-slate-500 mt-2 flex items-center gap-1 min-w-0">
+                  <span className="shrink-0">📍</span>
+                  <span className="truncate min-w-0">{b.location?.address}</span>
                 </div>
               </Link>
             ))}
