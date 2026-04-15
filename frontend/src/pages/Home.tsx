@@ -37,12 +37,12 @@ export default function Home() {
       </div>
 
       <div id="businesses" className="pb-12 sm:pb-20">
-        <div className="flex items-end justify-between mb-6 gap-2">
-          <div className="min-w-0">
-            <h2 className="text-2xl sm:text-3xl font-bold">Təsdiqlənmiş bizneslər</h2>
-            <p className="text-slate-500 mt-1">Keyfiyyətli xidmətlər, hamı yoxlanılmış</p>
+        <div className="flex items-end justify-between mb-6 gap-2 flex-wrap">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-xl sm:text-3xl font-bold break-words">Təsdiqlənmiş bizneslər</h2>
+            <p className="text-sm sm:text-base text-slate-500 mt-1 break-words">Keyfiyyətli xidmətlər, hamı yoxlanılmış</p>
           </div>
-          <div className="text-sm text-slate-500">{businesses.length} biznes</div>
+          <div className="text-xs sm:text-sm text-slate-500 shrink-0">{businesses.length} biznes</div>
         </div>
 
         {businesses.length === 0 ? (
