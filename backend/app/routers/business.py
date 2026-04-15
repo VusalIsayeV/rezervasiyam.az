@@ -75,8 +75,38 @@ def pending_businesses(db: Session = Depends(get_db), _: User = Depends(require_
 
 
 @router.get("/businesses")
-def all_businesses(db: Session = Depends(get_db)):
-    return [business_to_dict(b) for b in db.query(Business).filter(Business.status == "approved").all()]
+def all_businesses(
+    db: Session = Depends(get_db),
+    q: str | None = None,
+    category: str | None = None,
+    lat: float | None = None,
+    lng: float | None = None,
+):
+    query = db.query(Business).filter(Business.status == "approved")
+    if category:
+        query = query.filter(Business.category_slug == category)
+    if q:
+        like = f"%{q.lower()}%"
+        from sqlalchemy import or_, func
+        query = query.filter(or_(
+            func.lower(Business.name).like(like),
+            func.lower(Business.address).like(like),
+        ))
+    items = [business_to_dict(b) for b in query.all()]
+
+    if lat is not None and lng is not None:
+        import math
+        def dist(b):
+            if b["location"]["lat"] is None or b["location"]["lng"] is None:
+                return float("inf")
+            dlat = math.radians(b["location"]["lat"] - lat)
+            dlng = math.radians(b["location"]["lng"] - lng)
+            a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat)) * math.cos(math.radians(b["location"]["lat"])) * math.sin(dlng / 2) ** 2
+            return 6371 * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        for it in items:
+            it["distance_km"] = round(dist(it), 2)
+        items.sort(key=lambda x: x["distance_km"])
+    return items
 
 
 @router.get("/businesses/by-slug/{slug}")
