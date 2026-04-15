@@ -56,7 +56,7 @@ export default function Home() {
               <Link
                 key={b.id}
                 to={`/b/${b.slug}`}
-                className="card p-5 hover:-translate-y-1 transition-all duration-300 group"
+                className="card p-5 hover:-translate-y-1 transition-all duration-300 group min-w-0 overflow-hidden"
               >
                 <div className="w-full aspect-[16/10] rounded-xl mb-4 overflow-hidden bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
                   {b.images?.[0] ? (
