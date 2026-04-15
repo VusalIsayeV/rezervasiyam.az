@@ -111,7 +111,7 @@ export default function Register() {
         </button>
         <div className="text-center text-sm pt-1" style={{ color: "var(--text-muted)" }}>
           Artıq hesabın var?{" "}
-          <Link to="/login" className="font-semibold hover:underline" style={{ color: "var(--text)" }}>
+          <Link to="/login" className="font-semibold hover:underline" style={{ color: "var(--accent)" }}>
             Giriş et
           </Link>
         </div>

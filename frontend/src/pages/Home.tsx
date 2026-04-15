@@ -179,7 +179,7 @@ function CatChip({ active, onClick, children }: { active: boolean; onClick: () =
       className="shrink-0 px-4 py-2 rounded-full text-sm font-medium transition flex items-center gap-1.5"
       style={
         active
-          ? { background: "var(--text)", color: "var(--bg)", border: "1px solid var(--text)" }
+          ? { background: "var(--accent)", color: "var(--accent-contrast)", border: "1px solid var(--accent)" }
           : { background: "var(--bg-elev)", color: "var(--text)", border: "1px solid var(--border)" }
       }
     >

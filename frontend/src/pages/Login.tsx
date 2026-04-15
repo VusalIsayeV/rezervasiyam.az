@@ -84,7 +84,7 @@ export default function Login() {
         </button>
         <div className="text-center text-sm pt-1" style={{ color: "var(--text-muted)" }}>
           Hesabın yoxdur?{" "}
-          <Link to="/register" className="font-semibold hover:underline" style={{ color: "var(--text)" }}>
+          <Link to="/register" className="font-semibold hover:underline" style={{ color: "var(--accent)" }}>
             Qeydiyyatdan keç
           </Link>
         </div>

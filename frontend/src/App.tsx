@@ -46,7 +46,7 @@ export default function App() {
           <Link to="/" className="flex items-center gap-2.5 group min-w-0">
             <div
               className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-base group-hover:scale-105 transition flex-shrink-0"
-              style={{ background: "var(--text)", color: "var(--bg)" }}
+              style={{ background: "var(--accent)", color: "var(--accent-contrast)" }}
             >
               R
             </div>

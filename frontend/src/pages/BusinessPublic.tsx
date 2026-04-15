@@ -145,7 +145,7 @@ export default function BusinessPublic() {
                     className="text-left p-4 rounded-xl transition"
                     style={
                       active
-                        ? { background: "var(--text)", color: "var(--bg)", border: "1px solid var(--text)" }
+                        ? { background: "var(--accent)", color: "var(--accent-contrast)", border: "1px solid var(--accent)" }
                         : { background: "var(--bg-elev)", border: "1px solid var(--border)" }
                     }
                   >
@@ -193,7 +193,7 @@ export default function BusinessPublic() {
                         className="py-2.5 rounded-xl font-medium text-sm transition"
                         style={
                           active
-                            ? { background: "var(--text)", color: "var(--bg)" }
+                            ? { background: "var(--accent)", color: "var(--accent-contrast)" }
                             : { background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }
                         }
                       >
