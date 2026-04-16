@@ -206,6 +206,48 @@ def booking_stats(business_id: int, db: Session = Depends(get_db), user=Depends(
     }
 
 
+@router.patch("/{booking_id}/status")
+def update_booking_status(booking_id: int, payload: dict, db: Session = Depends(get_db), user=Depends(require_owner)):
+    bk = db.get(Booking, booking_id)
+    if not bk:
+        raise HTTPException(404, "Rezervasiya tapılmadı")
+    b = db.get(Business, bk.business_id)
+    if not b or b.owner_id != user.id:
+        raise HTTPException(403, "Bu biznes sizə aid deyil")
+    status = payload.get("status")
+    if status not in ("confirmed", "completed", "cancelled", "no_show"):
+        raise HTTPException(400, "Yanlış status")
+    bk.status = status
+    db.commit()
+    db.refresh(bk)
+    return booking_to_dict(bk)
+
+
+@router.get("/daily/{business_id}")
+def daily_schedule(business_id: int, date: str, db: Session = Depends(get_db), user=Depends(require_owner)):
+    b = db.get(Business, business_id)
+    if not b or b.owner_id != user.id:
+        raise HTTPException(403, "Bu biznes sizə aid deyil")
+    rows = db.query(Booking).filter(
+        Booking.business_id == business_id,
+        Booking.date == date,
+    ).order_by(Booking.start_time).all()
+
+    # get working hours for the day
+    try:
+        dt = datetime.strptime(date, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(400, "Tarix yanlışdır")
+    weekday = dt.weekday()
+    hours = next((h for h in (b.working_hours or []) if h["day"] == weekday and h["is_open"]), None)
+
+    return {
+        "date": date,
+        "working_hours": hours,
+        "bookings": [booking_to_dict(bk) for bk in rows],
+    }
+
+
 @router.post("/owner")
 def owner_create_booking(payload: BookingCreate, db: Session = Depends(get_db), user=Depends(require_owner)):
     b = db.get(Business, payload.business_id)

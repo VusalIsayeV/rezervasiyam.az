@@ -10,8 +10,22 @@ type Service = { name: string; price_min: number; price_max?: number; duration_m
 type Break = { start: string; end: string };
 type ClosedDay = { date: string; reason?: string };
 
+const STATUS_LABELS: Record<string, string> = {
+  confirmed: "Təsdiqlənib",
+  completed: "Tamamlanıb",
+  cancelled: "Ləğv edilib",
+  no_show: "Gəlməyib",
+};
+const STATUS_COLORS: Record<string, string> = {
+  confirmed: "var(--accent)",
+  completed: "#6366f1",
+  cancelled: "var(--danger)",
+  no_show: "#f59e0b",
+};
+
 const tabs = [
   { path: "", label: "İcmal", icon: "📊" },
+  { path: "schedule", label: "Gündəlik cədvəl", icon: "🗓️" },
   { path: "stats", label: "Statistika", icon: "📈" },
   { path: "bookings", label: "Rezervasiyalar", icon: "📅" },
   { path: "add-booking", label: "Müştəri yaz", icon: "➕" },
@@ -110,6 +124,7 @@ export default function OwnerDashboard() {
         <main className="flex-1 min-w-0">
           <Routes>
             <Route index element={<OverviewTab biz={biz} />} />
+            <Route path="schedule" element={<ScheduleTab biz={biz} />} />
             <Route path="stats" element={<StatsPanel businessId={biz.id} />} />
             <Route path="bookings" element={<BookingsTab biz={biz} />} />
             <Route path="add-booking" element={<AddBookingTab biz={biz} />} />
@@ -169,23 +184,170 @@ function OverviewTab({ biz }: { biz: any }) {
 /* ===== BOOKINGS TAB ===== */
 function BookingsTab({ biz }: { biz: any }) {
   const [bookings, setBookings] = useState<any[]>([]);
-  useEffect(() => {
-    api(`/bookings/business/${biz.id}`).then(setBookings);
-  }, [biz.id]);
+  const [filter, setFilter] = useState("all");
+
+  const load = () => api(`/bookings/business/${biz.id}`).then(setBookings);
+  useEffect(() => { load(); }, [biz.id]);
+
+  const changeStatus = async (id: number, status: string) => {
+    await api(`/bookings/${id}/status`, { method: "PATCH", body: { status } });
+    load();
+  };
+
+  const filtered = filter === "all" ? bookings : bookings.filter((b) => b.status === filter);
 
   return (
     <div>
-      <h2 className="text-xl font-bold font-display mb-4">Rezervasiyalar</h2>
-      {bookings.length === 0 ? (
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <h2 className="text-xl font-bold font-display">Rezervasiyalar</h2>
+        <div className="flex gap-1.5 flex-wrap">
+          {[
+            { value: "all", label: "Hamısı" },
+            { value: "confirmed", label: "Təsdiqlənib" },
+            { value: "completed", label: "Tamamlanıb" },
+            { value: "cancelled", label: "Ləğv" },
+            { value: "no_show", label: "Gəlməyib" },
+          ].map((f) => (
+            <button
+              key={f.value}
+              onClick={() => setFilter(f.value)}
+              className="px-3 py-1 rounded-lg text-xs font-medium transition"
+              style={
+                filter === f.value
+                  ? { background: "var(--accent)", color: "var(--accent-contrast)" }
+                  : { background: "var(--bg)", border: "1px solid var(--border)" }
+              }
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {filtered.length === 0 ? (
         <div className="card p-12 text-center">
           <div className="text-4xl mb-2">📅</div>
-          <p style={{ color: "var(--text-muted)" }}>Hələ rezervasiya yoxdur</p>
+          <p style={{ color: "var(--text-muted)" }}>Rezervasiya yoxdur</p>
         </div>
       ) : (
         <div className="space-y-2">
-          {bookings.map((b) => (
-            <BookingRow key={b.id} b={b} />
+          {filtered.map((b) => (
+            <BookingRowFull key={b.id} b={b} onStatusChange={changeStatus} />
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ===== SCHEDULE TAB ===== */
+function ScheduleTab({ biz }: { biz: any }) {
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [data, setData] = useState<any>(null);
+
+  const load = () => api(`/bookings/daily/${biz.id}?date=${date}`).then(setData).catch(() => setData(null));
+  useEffect(() => { load(); }, [date, biz.id]);
+
+  const changeStatus = async (id: number, status: string) => {
+    await api(`/bookings/${id}/status`, { method: "PATCH", body: { status } });
+    load();
+  };
+
+  const shiftDate = (days: number) => {
+    const d = new Date(date);
+    d.setDate(d.getDate() + days);
+    setDate(d.toISOString().slice(0, 10));
+  };
+
+  const wh = data?.working_hours;
+  const bookings: any[] = data?.bookings || [];
+
+  // build timeline slots
+  let timeSlots: number[] = [];
+  if (wh) {
+    const start = _parseHM(wh.start);
+    const end = _parseHM(wh.end);
+    for (let t = start; t < end; t += 30) timeSlots.push(t);
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
+        <h2 className="text-xl font-bold font-display">Gündəlik cədvəl</h2>
+        <div className="flex items-center gap-2">
+          <button onClick={() => shiftDate(-1)} className="btn-secondary !px-3 !py-1.5 text-sm">←</button>
+          <input type="date" className="input !py-1.5 !w-40 text-sm text-center" value={date} onChange={(e) => setDate(e.target.value)} />
+          <button onClick={() => shiftDate(1)} className="btn-secondary !px-3 !py-1.5 text-sm">→</button>
+          <button onClick={() => setDate(new Date().toISOString().slice(0, 10))} className="text-xs font-medium" style={{ color: "var(--accent)" }}>Bu gün</button>
+        </div>
+      </div>
+
+      {!wh ? (
+        <div className="card p-8 text-center" style={{ color: "var(--text-muted)" }}>Bu gün iş günü deyil</div>
+      ) : (
+        <div className="card overflow-hidden">
+          {timeSlots.map((t) => {
+            const timeStr = _fmtHM(t);
+            const bksHere = bookings.filter((b) => {
+              const bs = _parseHM(b.start_time);
+              return bs <= t && t < bs + b.duration_min;
+            });
+            const isStart = bookings.filter((b) => _parseHM(b.start_time) === t);
+
+            return (
+              <div
+                key={t}
+                className="flex min-h-[48px]"
+                style={{ borderBottom: "1px solid var(--border)" }}
+              >
+                <div
+                  className="w-16 sm:w-20 shrink-0 px-2 py-2 text-xs font-medium flex items-start justify-end"
+                  style={{ color: "var(--text-muted)", borderRight: "1px solid var(--border)" }}
+                >
+                  {timeStr}
+                </div>
+                <div className="flex-1 px-2 py-1.5 flex flex-wrap gap-1.5">
+                  {isStart.map((b: any) => (
+                    <div
+                      key={b.id}
+                      className="flex-1 min-w-[180px] rounded-lg px-3 py-2 text-xs"
+                      style={{
+                        background: `color-mix(in srgb, ${STATUS_COLORS[b.status] || "var(--accent)"} 12%, transparent)`,
+                        borderLeft: `3px solid ${STATUS_COLORS[b.status] || "var(--accent)"}`,
+                      }}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="font-semibold truncate">{b.service_name}</div>
+                        <StatusBadge status={b.status} />
+                      </div>
+                      <div className="mt-1 truncate" style={{ color: "var(--text-muted)" }}>
+                        {b.customer_name} · {b.customer_phone}
+                      </div>
+                      <div className="mt-1" style={{ color: "var(--text-muted)" }}>
+                        {b.start_time} — {_fmtHM(_parseHM(b.start_time) + b.duration_min)} ({b.duration_min} dəq)
+                      </div>
+                      {b.status === "confirmed" && (
+                        <div className="flex gap-1.5 mt-2">
+                          <button onClick={() => changeStatus(b.id, "completed")} className="px-2 py-0.5 rounded text-[10px] font-medium" style={{ background: "rgba(99,102,241,0.12)", color: "#6366f1" }}>✓ Tamamla</button>
+                          <button onClick={() => changeStatus(b.id, "no_show")} className="px-2 py-0.5 rounded text-[10px] font-medium" style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b" }}>Gəlmədi</button>
+                          <button onClick={() => changeStatus(b.id, "cancelled")} className="px-2 py-0.5 rounded text-[10px] font-medium" style={{ background: "rgba(220,38,38,0.08)", color: "var(--danger)" }}>Ləğv et</button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {bksHere.length === 0 && isStart.length === 0 && (
+                    <div className="text-[10px] py-1" style={{ color: "color-mix(in srgb, var(--text-muted) 40%, transparent)" }}>—</div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {bookings.length > 0 && (
+        <div className="mt-3 text-xs text-right" style={{ color: "var(--text-muted)" }}>
+          {bookings.length} rezervasiya · {bookings.filter((b) => b.status === "confirmed").length} təsdiqlənib ·{" "}
+          {bookings.filter((b) => b.status === "completed").length} tamamlanıb
         </div>
       )}
     </div>
@@ -454,23 +616,86 @@ function ClosedDaysTab({ biz, onUpdate }: { biz: any; onUpdate: (b: any) => void
 }
 
 /* ===== SHARED COMPONENTS ===== */
+function _parseHM(s: string): number {
+  const [h, m] = s.split(":").map(Number);
+  return h * 60 + m;
+}
+function _fmtHM(mins: number): string {
+  return `${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
+}
+
+function StatusBadge({ status }: { status: string }) {
+  return (
+    <span
+      className="text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0"
+      style={{
+        background: `color-mix(in srgb, ${STATUS_COLORS[status] || "var(--accent)"} 15%, transparent)`,
+        color: STATUS_COLORS[status] || "var(--accent)",
+      }}
+    >
+      {STATUS_LABELS[status] || status}
+    </span>
+  );
+}
+
 function BookingRow({ b }: { b: any }) {
   return (
     <div className="card p-4 flex items-center gap-4">
       <div
         className="w-12 h-12 rounded-xl flex flex-col items-center justify-center flex-shrink-0"
-        style={{ background: "var(--accent)", color: "var(--accent-contrast)" }}
+        style={{ background: STATUS_COLORS[b.status] || "var(--accent)", color: "#fff" }}
       >
         <div className="text-[10px] uppercase leading-none">{b.date.slice(5)}</div>
         <div className="text-sm font-bold leading-none mt-0.5">{b.start_time}</div>
       </div>
       <div className="flex-1 min-w-0">
-        <div className="font-semibold text-sm">{b.service_name}</div>
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-sm">{b.service_name}</span>
+          <StatusBadge status={b.status} />
+        </div>
         <div className="text-xs truncate" style={{ color: "var(--text-muted)" }}>
           {b.customer_name} · {b.customer_phone}
         </div>
       </div>
       <div className="text-xs shrink-0" style={{ color: "var(--text-muted)" }}>{b.duration_min} dəq</div>
+    </div>
+  );
+}
+
+function BookingRowFull({ b, onStatusChange }: { b: any; onStatusChange: (id: number, status: string) => void }) {
+  return (
+    <div className="card p-4">
+      <div className="flex items-center gap-4">
+        <div
+          className="w-12 h-12 rounded-xl flex flex-col items-center justify-center flex-shrink-0"
+          style={{ background: STATUS_COLORS[b.status] || "var(--accent)", color: "#fff" }}
+        >
+          <div className="text-[10px] uppercase leading-none">{b.date.slice(5)}</div>
+          <div className="text-sm font-bold leading-none mt-0.5">{b.start_time}</div>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold text-sm">{b.service_name}</span>
+            <StatusBadge status={b.status} />
+          </div>
+          <div className="text-xs truncate" style={{ color: "var(--text-muted)" }}>
+            {b.customer_name} · {b.customer_phone} · {b.duration_min} dəq
+          </div>
+        </div>
+      </div>
+      {b.status === "confirmed" && (
+        <div className="flex gap-2 mt-3 flex-wrap">
+          <button onClick={() => onStatusChange(b.id, "completed")} className="px-3 py-1.5 rounded-lg text-xs font-medium transition" style={{ background: "rgba(99,102,241,0.12)", color: "#6366f1" }}>
+            ✓ Tamamlandı
+          </button>
+          <button onClick={() => onStatusChange(b.id, "no_show")} className="px-3 py-1.5 rounded-lg text-xs font-medium transition" style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b" }}>
+            Gəlmədi
+          </button>
+          <button onClick={() => onStatusChange(b.id, "cancelled")} className="px-3 py-1.5 rounded-lg text-xs font-medium transition" style={{ background: "rgba(220,38,38,0.08)", color: "var(--danger)" }}>
+            Ləğv et
+          </button>
+        </div>
+      )}
     </div>
   );
 }
