@@ -130,6 +130,82 @@ def list_business_bookings(business_id: int, db: Session = Depends(get_db)):
     return [booking_to_dict(bk) for bk in rows]
 
 
+@router.get("/stats/{business_id}")
+def booking_stats(business_id: int, db: Session = Depends(get_db), user=Depends(require_owner)):
+    b = db.get(Business, business_id)
+    if not b or b.owner_id != user.id:
+        raise HTTPException(403, "Bu biznes sizə aid deyil")
+
+    now = datetime.now()
+    today = now.strftime("%Y-%m-%d")
+    week_start = (now - __import__("datetime").timedelta(days=now.weekday())).strftime("%Y-%m-%d")
+    month_start = now.strftime("%Y-%m-01")
+
+    all_bookings = db.query(Booking).filter(
+        Booking.business_id == business_id,
+        Booking.status != "cancelled",
+    ).all()
+
+    svc_map = {s["name"]: s for s in (b.services or [])}
+
+    def revenue(bk):
+        svc = svc_map.get(bk.service_name)
+        return svc["price_min"] if svc else 0
+
+    today_bk = [x for x in all_bookings if x.date == today]
+    week_bk = [x for x in all_bookings if x.date >= week_start]
+    month_bk = [x for x in all_bookings if x.date >= month_start]
+
+    # daily breakdown for last 30 days
+    from collections import defaultdict
+    daily = defaultdict(lambda: {"count": 0, "revenue": 0})
+    for bk in all_bookings:
+        if bk.date >= (now - __import__("datetime").timedelta(days=30)).strftime("%Y-%m-%d"):
+            daily[bk.date]["count"] += 1
+            daily[bk.date]["revenue"] += revenue(bk)
+
+    # by service
+    by_service = defaultdict(lambda: {"count": 0, "revenue": 0})
+    for bk in all_bookings:
+        by_service[bk.service_name]["count"] += 1
+        by_service[bk.service_name]["revenue"] += revenue(bk)
+
+    # weekday vs weekend
+    weekday_rev = 0
+    weekend_rev = 0
+    for bk in month_bk:
+        try:
+            d = datetime.strptime(bk.date, "%Y-%m-%d")
+            r = revenue(bk)
+            if d.weekday() < 5:
+                weekday_rev += r
+            else:
+                weekend_rev += r
+        except ValueError:
+            pass
+
+    # by hour
+    by_hour = defaultdict(int)
+    for bk in all_bookings:
+        try:
+            h = int(bk.start_time.split(":")[0])
+            by_hour[h] += 1
+        except (ValueError, AttributeError):
+            pass
+
+    return {
+        "today": {"count": len(today_bk), "revenue": sum(revenue(x) for x in today_bk)},
+        "week": {"count": len(week_bk), "revenue": sum(revenue(x) for x in week_bk)},
+        "month": {"count": len(month_bk), "revenue": sum(revenue(x) for x in month_bk)},
+        "total": {"count": len(all_bookings), "revenue": sum(revenue(x) for x in all_bookings)},
+        "weekday_revenue": weekday_rev,
+        "weekend_revenue": weekend_rev,
+        "daily": [{"date": k, **v} for k, v in sorted(daily.items())],
+        "by_service": [{"name": k, **v} for k, v in sorted(by_service.items(), key=lambda x: -x[1]["revenue"])],
+        "by_hour": [{"hour": h, "count": c} for h, c in sorted(by_hour.items())],
+    }
+
+
 @router.post("/owner")
 def owner_create_booking(payload: BookingCreate, db: Session = Depends(get_db), user=Depends(require_owner)):
     b = db.get(Business, payload.business_id)

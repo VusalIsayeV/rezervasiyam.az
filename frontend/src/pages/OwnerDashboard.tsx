@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { validatePhone, validateRequired, normalizePhone } from "../lib/validators";
+import StatsPanel from "../components/StatsPanel";
 
 const DAYS = ["Bazar ertəsi", "Çərşənbə ax.", "Çərşənbə", "Cümə ax.", "Cümə", "Şənbə", "Bazar"];
 
@@ -340,6 +341,11 @@ export default function OwnerDashboard() {
             <button onClick={addService} className="btn-primary">Əlavə et</button>
           </div>
         </div>
+      </div>
+
+      <div className="card p-5 sm:p-6">
+        <h2 className="text-xl font-bold font-display mb-5">Statistika</h2>
+        <StatsPanel businessId={biz.id} />
       </div>
 
       <OwnerBooking biz={biz} onBooked={() => api(`/bookings/business/${biz.id}`).then(setBookings)} />
