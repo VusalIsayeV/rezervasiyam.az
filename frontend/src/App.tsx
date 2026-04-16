@@ -104,7 +104,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/business/new" element={<BusinessRegister />} />
-        <Route path="/dashboard" element={<OwnerDashboard />} />
+        <Route path="/dashboard/*" element={<OwnerDashboard />} />
         <Route path="/mentor" element={<MentorPanel />} />
         <Route path="/b/:slug" element={<BusinessPublic />} />
       </Routes>
