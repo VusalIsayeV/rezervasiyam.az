@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api";
+import { validatePhone, validateRequired, normalizePhone } from "../lib/validators";
 
 const DAYS = ["Bazar ertəsi", "Çərşənbə ax.", "Çərşənbə", "Cümə ax.", "Cümə", "Şənbə", "Bazar"];
 
@@ -341,6 +342,8 @@ export default function OwnerDashboard() {
         </div>
       </div>
 
+      <OwnerBooking biz={biz} onBooked={() => api(`/bookings/business/${biz.id}`).then(setBookings)} />
+
       <div className="card p-6">
         <h2 className="text-xl font-bold mb-4">Rezervasiyalar</h2>
         {bookings.length === 0 ? (
@@ -365,6 +368,162 @@ export default function OwnerDashboard() {
                 <div className="text-xs text-slate-400">{b.duration_min} dəq</div>
               </div>
             ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function OwnerBooking({ biz, onBooked }: { biz: any; onBooked: () => void }) {
+  const [service, setService] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [slots, setSlots] = useState<string[]>([]);
+  const [slot, setSlot] = useState("");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (service && date) {
+      api(
+        `/bookings/availability?business_id=${biz.id}&service_name=${encodeURIComponent(service)}&date=${date}`,
+        { auth: false }
+      )
+        .then((r) => setSlots(r.slots))
+        .catch(() => setSlots([]));
+    }
+  }, [service, date, biz.id]);
+
+  const submit = async () => {
+    setErr("");
+    setMsg("");
+    const v = validateRequired(name, "Ad", 2, 80) || validatePhone(phone);
+    if (v) { setErr(v); return; }
+    setLoading(true);
+    try {
+      await api("/bookings/owner", {
+        method: "POST",
+        body: {
+          business_id: biz.id,
+          service_name: service,
+          customer_name: name.trim(),
+          customer_phone: normalizePhone(phone),
+          date,
+          start_time: slot,
+        },
+      });
+      setMsg("Müştəri rezervasiyası əlavə edildi");
+      setSlot("");
+      setName("");
+      setPhone("");
+      onBooked();
+      const r = await api(
+        `/bookings/availability?business_id=${biz.id}&service_name=${encodeURIComponent(service)}&date=${date}`,
+        { auth: false }
+      );
+      setSlots(r.slots);
+      setTimeout(() => setMsg(""), 3000);
+    } catch (e: any) {
+      setErr(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="card p-6">
+      <h2 className="text-xl font-bold mb-1">Müştəri yaz</h2>
+      <p className="text-sm mb-4" style={{ color: "var(--text-muted)" }}>
+        Zəng və ya şəxsən müraciət edən müştəri üçün
+      </p>
+
+      <div className="space-y-4">
+        <div>
+          <label className="label">Xidmət</label>
+          <select
+            className="input"
+            value={service}
+            onChange={(e) => { setService(e.target.value); setSlot(""); }}
+          >
+            <option value="">Seç...</option>
+            {(biz.services || []).map((s: any) => (
+              <option key={s.name} value={s.name}>
+                {s.name} — {s.duration_min} dəq
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {service && (
+          <div>
+            <label className="label">Tarix</label>
+            <input
+              type="date"
+              className="input"
+              value={date}
+              onChange={(e) => { setDate(e.target.value); setSlot(""); }}
+              min={new Date().toISOString().slice(0, 10)}
+            />
+          </div>
+        )}
+
+        {service && slots.length > 0 && (
+          <div>
+            <label className="label">Vaxt</label>
+            <div className="flex flex-wrap gap-2">
+              {slots.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setSlot(s)}
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium transition"
+                  style={
+                    slot === s
+                      ? { background: "var(--accent)", color: "var(--accent-contrast)" }
+                      : { background: "var(--bg)", border: "1px solid var(--border)", color: "var(--text)" }
+                  }
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {service && slots.length === 0 && (
+          <div className="text-sm p-3 rounded-xl" style={{ background: "var(--bg)", color: "var(--text-muted)" }}>
+            Bu tarix üçün boş vaxt yoxdur
+          </div>
+        )}
+
+        {slot && (
+          <>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div>
+                <label className="label">Müştəri adı</label>
+                <input className="input" placeholder="Ad soyad" value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
+              <div>
+                <label className="label">Telefon</label>
+                <input className="input" placeholder="+994 50 123 45 67" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              </div>
+            </div>
+            <button onClick={submit} disabled={loading || !name || !phone} className="btn-primary">
+              {loading ? "Göndərilir..." : "Rezervasiya yaz"}
+            </button>
+          </>
+        )}
+
+        {msg && (
+          <div className="text-sm px-4 py-3 rounded-xl" style={{ background: "rgba(16,185,129,0.1)", color: "#047857" }}>
+            {msg}
+          </div>
+        )}
+        {err && (
+          <div className="text-sm px-4 py-3 rounded-xl" style={{ background: "rgba(220,38,38,0.08)", color: "var(--danger)" }}>
+            {err}
           </div>
         )}
       </div>

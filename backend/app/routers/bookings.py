@@ -6,6 +6,7 @@ from app.database import get_db
 from app.models import Business, Booking
 from app.db import booking_to_dict
 from app.schemas import BookingCreate
+from app.security import require_owner
 
 router = APIRouter(prefix="/api/bookings", tags=["bookings"])
 
@@ -125,5 +126,34 @@ def create_booking(payload: BookingCreate, db: Session = Depends(get_db)):
 
 @router.get("/business/{business_id}")
 def list_business_bookings(business_id: int, db: Session = Depends(get_db)):
-    rows = db.query(Booking).filter(Booking.business_id == business_id).all()
+    rows = db.query(Booking).filter(Booking.business_id == business_id).order_by(Booking.date.desc(), Booking.start_time.desc()).all()
     return [booking_to_dict(bk) for bk in rows]
+
+
+@router.post("/owner")
+def owner_create_booking(payload: BookingCreate, db: Session = Depends(get_db), user=Depends(require_owner)):
+    b = db.get(Business, payload.business_id)
+    if not b or b.owner_id != user.id:
+        raise HTTPException(403, "Bu biznes sizə aid deyil")
+    svc = _find_service(b, payload.service_name)
+    if not svc:
+        raise HTTPException(404, "Xidmət tapılmadı")
+
+    avail = availability(payload.business_id, payload.service_name, payload.date, db)
+    if payload.start_time not in avail["slots"]:
+        raise HTTPException(400, "Bu vaxt artıq dolub")
+
+    bk = Booking(
+        business_id=payload.business_id,
+        service_name=payload.service_name,
+        customer_name=payload.customer_name,
+        customer_phone=payload.customer_phone,
+        date=payload.date,
+        start_time=payload.start_time,
+        duration_min=svc["duration_min"],
+        status="confirmed",
+    )
+    db.add(bk)
+    db.commit()
+    db.refresh(bk)
+    return booking_to_dict(bk)
