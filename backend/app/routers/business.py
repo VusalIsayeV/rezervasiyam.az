@@ -81,6 +81,9 @@ def all_businesses(
     category: str | None = None,
     lat: float | None = None,
     lng: float | None = None,
+    price_min: float | None = None,
+    price_max: float | None = None,
+    sort: str | None = None,
 ):
     query = db.query(Business).filter(Business.status == "approved")
     if category:
@@ -94,6 +97,27 @@ def all_businesses(
         ))
     items = [business_to_dict(b) for b in query.all()]
 
+    # enrich with min/max price from services
+    for it in items:
+        prices = [s["price_min"] for s in it["services"] if s.get("price_min")]
+        it["min_price"] = min(prices) if prices else 0
+        it["max_price"] = max(s.get("price_max") or s["price_min"] for s in it["services"]) if it["services"] else 0
+        it["service_count"] = len(it["services"])
+
+    # q also matches service names
+    if q:
+        ql = q.lower()
+        for it in items:
+            svc_match = any(ql in s["name"].lower() for s in it["services"])
+            it["_svc_match"] = svc_match
+
+    # price filter
+    if price_min is not None:
+        items = [it for it in items if it["min_price"] >= price_min]
+    if price_max is not None:
+        items = [it for it in items if it["min_price"] <= price_max]
+
+    # distance
     if lat is not None and lng is not None:
         import math
         def dist(b):
@@ -105,7 +129,21 @@ def all_businesses(
             return 6371 * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
         for it in items:
             it["distance_km"] = round(dist(it), 2)
-        items.sort(key=lambda x: x["distance_km"])
+
+    # sorting
+    if sort == "price_asc":
+        items.sort(key=lambda x: x["min_price"])
+    elif sort == "price_desc":
+        items.sort(key=lambda x: -x["min_price"])
+    elif sort == "name":
+        items.sort(key=lambda x: x["name"].lower())
+    elif lat is not None and lng is not None:
+        items.sort(key=lambda x: x.get("distance_km", float("inf")))
+
+    # clean internal fields
+    for it in items:
+        it.pop("_svc_match", None)
+
     return items
 
 
