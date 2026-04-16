@@ -9,6 +9,19 @@ from app.routers import auth, business, bookings
 
 Base.metadata.create_all(bind=engine)
 
+# lightweight migration: add columns that create_all won't add to existing tables
+from sqlalchemy import text, inspect as sa_inspect
+
+def _migrate():
+    insp = sa_inspect(engine)
+    if "businesses" in insp.get_table_names():
+        cols = {c["name"] for c in insp.get_columns("businesses")}
+        with engine.begin() as conn:
+            if "discounts" not in cols:
+                conn.execute(text("ALTER TABLE businesses ADD COLUMN discounts JSON"))
+
+_migrate()
+
 app = FastAPI(title="rezervasiyam.az API")
 
 app.add_middleware(
