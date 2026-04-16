@@ -149,10 +149,26 @@ export default function BusinessPublic() {
                         : { background: "var(--bg-elev)", border: "1px solid var(--border)" }
                     }
                   >
-                    <div className="font-semibold">{s.name}</div>
-                    <div className="text-sm mt-1 opacity-70">
-                      {s.price_min}{s.price_max ? `-${s.price_max}` : ""} AZN · {s.duration_min} dəq
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">{s.name}</span>
+                      {s.discount && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded font-bold" style={{ background: active ? "rgba(255,255,255,0.25)" : "rgba(220,38,38,0.1)", color: active ? "#fff" : "var(--danger)" }}>
+                          {s.discount.type === "percent" ? `-${s.discount.value}%` : `-${s.discount.value}₼`}
+                        </span>
+                      )}
                     </div>
+                    <div className="text-sm mt-1 opacity-70">
+                      {s.discounted_price !== undefined ? (
+                        <>
+                          <s className="opacity-50">{s.price_min} ₼</s>{" "}
+                          <b>{s.discounted_price} ₼</b>
+                        </>
+                      ) : (
+                        <>{s.price_min}{s.price_max ? `-${s.price_max}` : ""} ₼</>
+                      )}
+                      {" · "}{s.duration_min} dəq
+                    </div>
+                    {s.discount?.label && <div className="text-[11px] mt-1 opacity-60">{s.discount.label}</div>}
                   </button>
                 );
               })}

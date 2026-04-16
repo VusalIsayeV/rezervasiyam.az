@@ -31,6 +31,7 @@ const tabs = [
   { path: "add-booking", label: "Müştəri yaz", icon: "➕" },
   { path: "services", label: "Xidmətlər", icon: "🛠️" },
   { path: "hours", label: "İş saatları", icon: "🕐" },
+  { path: "discounts", label: "Endirimlər", icon: "🏷️" },
   { path: "closed-days", label: "Bağlı günlər", icon: "🚫" },
 ];
 
@@ -130,6 +131,7 @@ export default function OwnerDashboard() {
             <Route path="add-booking" element={<AddBookingTab biz={biz} />} />
             <Route path="services" element={<ServicesTab biz={biz} onUpdate={setBiz} />} />
             <Route path="hours" element={<HoursTab biz={biz} onUpdate={setBiz} />} />
+            <Route path="discounts" element={<DiscountsTab biz={biz} onUpdate={setBiz} />} />
             <Route path="closed-days" element={<ClosedDaysTab biz={biz} onUpdate={setBiz} />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
@@ -616,6 +618,177 @@ function ClosedDaysTab({ biz, onUpdate }: { biz: any; onUpdate: (b: any) => void
 }
 
 /* ===== SHARED COMPONENTS ===== */
+/* ===== DISCOUNTS TAB ===== */
+type Discount = { service_name: string; type: "percent" | "fixed"; value: number; start_date: string; end_date: string; label: string };
+
+function DiscountsTab({ biz, onUpdate }: { biz: any; onUpdate: (b: any) => void }) {
+  const [discounts, setDiscounts] = useState<Discount[]>(biz.discounts || []);
+  const [msg, setMsg] = useState("");
+  const [newDisc, setNewDisc] = useState<Discount>({
+    service_name: "",
+    type: "percent",
+    value: 10,
+    start_date: new Date().toISOString().slice(0, 10),
+    end_date: "",
+    label: "",
+  });
+
+  const save = async (list: Discount[]) => {
+    setMsg("");
+    const b = await api("/businesses/mine/discounts", { method: "PUT", body: list });
+    onUpdate(b);
+    setDiscounts(b.discounts);
+    setMsg("Yadda saxlanıldı");
+    setTimeout(() => setMsg(""), 2000);
+  };
+
+  const add = () => {
+    if (!newDisc.service_name || !newDisc.end_date || newDisc.value <= 0) return;
+    const list = [...discounts, newDisc];
+    save(list);
+    setNewDisc({ service_name: "", type: "percent", value: 10, start_date: new Date().toISOString().slice(0, 10), end_date: "", label: "" });
+  };
+
+  const remove = (i: number) => save(discounts.filter((_, j) => j !== i));
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-xl font-bold font-display">Endirimlər</h2>
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>Xidmətlərə müddətli endirim təyin et</p>
+        </div>
+        {msg && <span className="text-sm font-medium" style={{ color: "var(--accent)" }}>{msg}</span>}
+      </div>
+
+      {discounts.length === 0 ? (
+        <div className="text-sm italic mb-5" style={{ color: "var(--text-muted)" }}>Hələ endirim yoxdur</div>
+      ) : (
+        <div className="space-y-2 mb-5">
+          {discounts.map((d, i) => {
+            const isActive = d.start_date <= today && today <= d.end_date;
+            const isExpired = today > d.end_date;
+            const svc = (biz.services || []).find((s: any) => s.name === d.service_name);
+            const original = svc?.price_min || 0;
+            const discountedPrice = d.type === "percent"
+              ? Math.round(original * (1 - d.value / 100) * 100) / 100
+              : Math.max(0, original - d.value);
+
+            return (
+              <div key={i} className="card p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-sm">{d.service_name}</span>
+                      {isActive && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>Aktiv</span>
+                      )}
+                      {isExpired && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(220,38,38,0.08)", color: "var(--danger)" }}>Bitib</span>
+                      )}
+                      {!isActive && !isExpired && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b" }}>Gözləyir</span>
+                      )}
+                    </div>
+                    <div className="text-xs mt-1.5 flex items-center gap-3 flex-wrap" style={{ color: "var(--text-muted)" }}>
+                      <span>
+                        {d.type === "percent" ? `${d.value}% endirim` : `${d.value} ₼ endirim`}
+                      </span>
+                      <span>
+                        <s>{original} ₼</s> → <b style={{ color: "var(--accent)" }}>{discountedPrice} ₼</b>
+                      </span>
+                      <span>{d.start_date} — {d.end_date}</span>
+                    </div>
+                    {d.label && <div className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{d.label}</div>}
+                  </div>
+                  <button onClick={() => remove(i)} className="btn-danger shrink-0">Sil</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="pt-4" style={{ borderTop: "1px solid var(--border)" }}>
+        <div className="text-sm font-semibold mb-3">Yeni endirim</div>
+        <div className="space-y-3">
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label className="label">Xidmət</label>
+              <select className="input" value={newDisc.service_name} onChange={(e) => setNewDisc({ ...newDisc, service_name: e.target.value })}>
+                <option value="">Seç...</option>
+                {(biz.services || []).map((s: any) => (
+                  <option key={s.name} value={s.name}>{s.name} — {s.price_min} ₼</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="label">Endirim tipi</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setNewDisc({ ...newDisc, type: "percent" })}
+                  className="flex-1 px-3 py-2.5 rounded-xl text-sm font-medium transition"
+                  style={newDisc.type === "percent" ? { background: "var(--accent)", color: "var(--accent-contrast)" } : { background: "var(--bg)", border: "1px solid var(--border)" }}
+                >
+                  % Faiz
+                </button>
+                <button
+                  onClick={() => setNewDisc({ ...newDisc, type: "fixed" })}
+                  className="flex-1 px-3 py-2.5 rounded-xl text-sm font-medium transition"
+                  style={newDisc.type === "fixed" ? { background: "var(--accent)", color: "var(--accent-contrast)" } : { background: "var(--bg)", border: "1px solid var(--border)" }}
+                >
+                  ₼ Sabit
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-3">
+            <div>
+              <label className="label">{newDisc.type === "percent" ? "Faiz (%)" : "Məbləğ (₼)"}</label>
+              <input type="number" className="input" value={newDisc.value} onChange={(e) => setNewDisc({ ...newDisc, value: parseFloat(e.target.value) || 0 })} />
+            </div>
+            <div>
+              <label className="label">Başlanğıc</label>
+              <input type="date" className="input" value={newDisc.start_date} onChange={(e) => setNewDisc({ ...newDisc, start_date: e.target.value })} />
+            </div>
+            <div>
+              <label className="label">Bitmə</label>
+              <input type="date" className="input" value={newDisc.end_date} onChange={(e) => setNewDisc({ ...newDisc, end_date: e.target.value })} />
+            </div>
+          </div>
+          <div>
+            <label className="label">Etiket <span style={{ color: "var(--text-muted)" }} className="font-normal">(könüllü)</span></label>
+            <input className="input" placeholder="məs: Yay kampaniyası, Açılış endirimi..." value={newDisc.label} onChange={(e) => setNewDisc({ ...newDisc, label: e.target.value })} />
+          </div>
+
+          {newDisc.service_name && newDisc.value > 0 && (
+            <div className="text-sm p-3 rounded-xl" style={{ background: "var(--bg)", border: "1px solid var(--border)" }}>
+              Nəticə:{" "}
+              <s style={{ color: "var(--text-muted)" }}>
+                {(biz.services || []).find((s: any) => s.name === newDisc.service_name)?.price_min || 0} ₼
+              </s>{" → "}
+              <b style={{ color: "var(--accent)" }}>
+                {(() => {
+                  const orig = (biz.services || []).find((s: any) => s.name === newDisc.service_name)?.price_min || 0;
+                  return newDisc.type === "percent"
+                    ? Math.round(orig * (1 - newDisc.value / 100) * 100) / 100
+                    : Math.max(0, orig - newDisc.value);
+                })()} ₼
+              </b>
+            </div>
+          )}
+
+          <button onClick={add} disabled={!newDisc.service_name || !newDisc.end_date || newDisc.value <= 0} className="btn-primary">
+            Endirim əlavə et
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function _parseHM(s: string): number {
   const [h, m] = s.split(":").map(Number);
   return h * 60 + m;

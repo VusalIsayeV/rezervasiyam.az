@@ -296,14 +296,19 @@ export default function Home() {
                 <div className="text-[11px] uppercase tracking-wider mt-1 font-medium" style={{ color: "var(--text-muted)" }}>
                   {b.category_slug}
                 </div>
-                {/* Price & Service Count */}
-                <div className="flex items-center gap-3 mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
+                {/* Price & Discount */}
+                <div className="flex items-center gap-2 mt-2 text-xs flex-wrap" style={{ color: "var(--text-muted)" }}>
                   {b.min_price > 0 && (
                     <span className="font-semibold" style={{ color: "var(--text)" }}>
                       {b.min_price === b.max_price ? `${b.min_price} ₼` : `${b.min_price}–${b.max_price} ₼`}
                     </span>
                   )}
                   {b.service_count > 0 && <span>{b.service_count} xidmət</span>}
+                  {b.services?.some((s: any) => s.discount) && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded font-bold" style={{ background: "rgba(220,38,38,0.1)", color: "var(--danger)" }}>
+                      ENDİRİM
+                    </span>
+                  )}
                 </div>
                 <div className="text-sm mt-2 flex items-center gap-1 min-w-0" style={{ color: "var(--text-muted)" }}>
                   <span className="shrink-0">📍</span>

@@ -221,3 +221,35 @@ def set_closed_days(days: list[ClosedDayIn], db: Session = Depends(get_db), user
     db.commit()
     db.refresh(b)
     return business_to_dict(b)
+
+
+@router.put("/businesses/mine/discounts")
+def set_discounts(discounts: list[dict], db: Session = Depends(get_db), user: User = Depends(require_owner)):
+    b = _my_business(db, user)
+    validated = []
+    for d in discounts:
+        if d.get("type") not in ("percent", "fixed"):
+            raise HTTPException(400, "Endirim tipi 'percent' və ya 'fixed' olmalıdır")
+        if not d.get("service_name"):
+            raise HTTPException(400, "Xidmət adı tələb olunur")
+        if not d.get("start_date") or not d.get("end_date"):
+            raise HTTPException(400, "Başlanğıc və bitmə tarixi tələb olunur")
+        if d["start_date"] > d["end_date"]:
+            raise HTTPException(400, "Bitmə tarixi başlanğıcdan sonra olmalıdır")
+        val = float(d.get("value", 0))
+        if val <= 0:
+            raise HTTPException(400, "Endirim dəyəri müsbət olmalıdır")
+        if d["type"] == "percent" and val > 100:
+            raise HTTPException(400, "Faiz endirimi 100-dən çox ola bilməz")
+        validated.append({
+            "service_name": d["service_name"],
+            "type": d["type"],
+            "value": val,
+            "start_date": d["start_date"],
+            "end_date": d["end_date"],
+            "label": d.get("label", ""),
+        })
+    b.discounts = validated
+    db.commit()
+    db.refresh(b)
+    return business_to_dict(b)

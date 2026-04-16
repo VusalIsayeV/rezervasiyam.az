@@ -1,4 +1,5 @@
 """Static data (categories) + business<->dict converters."""
+from datetime import datetime
 from typing import Any
 from app.models import Business, Booking, User
 
@@ -49,6 +50,29 @@ SERVICES_BY_CATEGORY = {
 }
 
 
+def _enrich_services(services: list, discounts: list) -> list:
+    today = datetime.now().strftime("%Y-%m-%d")
+    active = [d for d in discounts if d["start_date"] <= today <= d["end_date"]]
+    result = []
+    for s in services:
+        s = dict(s)
+        disc = next((d for d in active if d["service_name"] == s["name"]), None)
+        if disc:
+            original = s["price_min"]
+            if disc["type"] == "percent":
+                s["discounted_price"] = round(original * (1 - disc["value"] / 100), 2)
+            else:
+                s["discounted_price"] = round(max(0, original - disc["value"]), 2)
+            s["discount"] = {
+                "type": disc["type"],
+                "value": disc["value"],
+                "label": disc.get("label", ""),
+                "end_date": disc["end_date"],
+            }
+        result.append(s)
+    return result
+
+
 def business_to_dict(b: Business) -> dict[str, Any]:
     return {
         "id": b.id,
@@ -63,10 +87,11 @@ def business_to_dict(b: Business) -> dict[str, Any]:
         "contact_phone": b.contact_phone,
         "status": b.status,
         "note": b.note,
-        "services": b.services or [],
+        "services": _enrich_services(b.services or [], b.discounts or []),
         "images": b.images or [],
         "working_hours": b.working_hours or [],
         "closed_days": b.closed_days or [],
+        "discounts": b.discounts or [],
     }
 
 

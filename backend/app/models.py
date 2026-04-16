@@ -37,6 +37,7 @@ class Business(Base):
     images: Mapped[list] = mapped_column(JSON, default=list)
     working_hours: Mapped[list] = mapped_column(JSON, default=list)
     closed_days: Mapped[list] = mapped_column(JSON, default=list)
+    discounts: Mapped[list] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     owner: Mapped["User"] = relationship(back_populates="business")
