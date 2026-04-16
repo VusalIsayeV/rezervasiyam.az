@@ -19,6 +19,11 @@ def _migrate():
         with engine.begin() as conn:
             if "discounts" not in cols:
                 conn.execute(text("ALTER TABLE businesses ADD COLUMN discounts JSON"))
+    if "bookings" in insp.get_table_names():
+        cols = {c["name"] for c in insp.get_columns("bookings")}
+        with engine.begin() as conn:
+            if "price" not in cols:
+                conn.execute(text("ALTER TABLE bookings ADD COLUMN price FLOAT"))
 
 _migrate()
 

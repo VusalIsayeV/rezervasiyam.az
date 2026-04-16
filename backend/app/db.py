@@ -105,6 +105,7 @@ def booking_to_dict(bk: Booking) -> dict[str, Any]:
         "date": bk.date,
         "start_time": bk.start_time,
         "duration_min": bk.duration_min,
+        "price": bk.price,
         "status": bk.status,
     }
 

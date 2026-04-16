@@ -830,7 +830,10 @@ function BookingRow({ b }: { b: any }) {
           {b.customer_name} · {b.customer_phone}
         </div>
       </div>
-      <div className="text-xs shrink-0" style={{ color: "var(--text-muted)" }}>{b.duration_min} dəq</div>
+      <div className="text-right shrink-0">
+        {b.price != null && <div className="text-sm font-semibold">{b.price} ₼</div>}
+        <div className="text-xs" style={{ color: "var(--text-muted)" }}>{b.duration_min} dəq</div>
+      </div>
     </div>
   );
 }
@@ -850,6 +853,7 @@ function BookingRowFull({ b, onStatusChange }: { b: any; onStatusChange: (id: nu
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-sm">{b.service_name}</span>
             <StatusBadge status={b.status} />
+            {b.price != null && <span className="text-xs font-semibold" style={{ color: "var(--accent)" }}>{b.price} ₼</span>}
           </div>
           <div className="text-xs truncate" style={{ color: "var(--text-muted)" }}>
             {b.customer_name} · {b.customer_phone} · {b.duration_min} dəq

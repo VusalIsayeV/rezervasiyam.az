@@ -27,6 +27,20 @@ def _find_service(business: Business, name: str) -> dict | None:
     return None
 
 
+def _current_price(business: Business, svc: dict) -> float:
+    """Return the effective price now (with active discount if any)."""
+    price = svc["price_min"]
+    today = datetime.now().strftime("%Y-%m-%d")
+    for d in (business.discounts or []):
+        if d["service_name"] == svc["name"] and d["start_date"] <= today <= d["end_date"]:
+            if d["type"] == "percent":
+                price = round(price * (1 - d["value"] / 100), 2)
+            else:
+                price = round(max(0, price - d["value"]), 2)
+            break
+    return price
+
+
 @router.get("/availability")
 def availability(business_id: int, service_name: str, date: str, db: Session = Depends(get_db)):
     b = db.get(Business, business_id)
@@ -116,6 +130,7 @@ def create_booking(payload: BookingCreate, db: Session = Depends(get_db)):
         date=payload.date,
         start_time=payload.start_time,
         duration_min=svc["duration_min"],
+        price=_current_price(b, svc),
         status="confirmed",
     )
     db.add(bk)
@@ -149,6 +164,8 @@ def booking_stats(business_id: int, db: Session = Depends(get_db), user=Depends(
     svc_map = {s["name"]: s for s in (b.services or [])}
 
     def revenue(bk):
+        if bk.price is not None:
+            return bk.price
         svc = svc_map.get(bk.service_name)
         return svc["price_min"] if svc else 0
 
@@ -269,6 +286,7 @@ def owner_create_booking(payload: BookingCreate, db: Session = Depends(get_db), 
         date=payload.date,
         start_time=payload.start_time,
         duration_min=svc["duration_min"],
+        price=_current_price(b, svc),
         status="confirmed",
     )
     db.add(bk)

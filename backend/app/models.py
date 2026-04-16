@@ -54,6 +54,7 @@ class Booking(Base):
     date: Mapped[str] = mapped_column(String(10), index=True)  # YYYY-MM-DD
     start_time: Mapped[str] = mapped_column(String(5))  # HH:MM
     duration_min: Mapped[int] = mapped_column(Integer)
+    price: Mapped[float | None] = mapped_column(Float, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="confirmed")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 

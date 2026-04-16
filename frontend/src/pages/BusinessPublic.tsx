@@ -252,6 +252,11 @@ export default function BusinessPublic() {
               <div className="text-xs rounded-lg p-3" style={{ background: "var(--bg-elev)", color: "var(--text-muted)" }}>
                 Seçim: <b style={{ color: "var(--text)" }}>{selectedService?.name}</b> · {date} ·{" "}
                 <b style={{ color: "var(--text)" }}>{pickedSlot}</b>
+                {selectedService && (
+                  <> · <b style={{ color: "var(--accent)" }}>
+                    {selectedService.discounted_price !== undefined ? selectedService.discounted_price : selectedService.price_min} ₼
+                  </b></>
+                )}
               </div>
               <button onClick={book} disabled={loading} className="btn-primary w-full !py-3">
                 {loading ? "Göndərilir..." : "Təsdiq et"}
